@@ -18,7 +18,7 @@ on:
 
 env:
   APP_REPO: kiratTechOffical/unifieddashboard_prod_fe
-  APP_REF: UI-Automation
+  APP_REF: feature/UI-Automation
 
 jobs:
   run-tests:
