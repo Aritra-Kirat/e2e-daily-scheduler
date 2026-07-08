@@ -1,0 +1,73 @@
+name: E2E Daily Scheduler
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: What to trigger
+        required: true
+        default: tests-and-report
+        type: choice
+        options:
+          - tests-only
+          - report-only
+          - tests-and-report
+
+env:
+  TARGET_OWNER: kiratTechOffical
+  TARGET_REPO: unifieddashboard_prod_fe
+  TARGET_REF: feature/Aritra
+  WORKFLOW_FILE: e2e-daily.yml
+
+jobs:
+  trigger-full:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'tests-and-report'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger E2E tests and Teams report
+        env:
+          GH_TOKEN: ${{ secrets.E2E_DISPATCH_PAT }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${TARGET_OWNER}/${TARGET_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "{\"ref\":\"${TARGET_REF}\",\"inputs\":{\"mode\":\"tests-and-report\"}}"
+
+  trigger-tests:
+    if: |
+      github.event.schedule == '30 18 * * *' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'tests-only')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger E2E tests
+        env:
+          GH_TOKEN: ${{ secrets.E2E_DISPATCH_PAT }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${TARGET_OWNER}/${TARGET_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "{\"ref\":\"${TARGET_REF}\",\"inputs\":{\"mode\":\"tests-only\"}}"
+
+  trigger-report:
+    if: |
+      github.event.schedule == '30 2 * * *' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'report-only')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Teams report
+        env:
+          GH_TOKEN: ${{ secrets.E2E_DISPATCH_PAT }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${TARGET_OWNER}/${TARGET_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "{\"ref\":\"${TARGET_REF}\",\"inputs\":{\"mode\":\"report-only\"}}"
