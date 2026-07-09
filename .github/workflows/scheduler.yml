@@ -2,7 +2,7 @@ name: E2E Daily Scheduler
 
 on:
   schedule:
-    - cron: "30 18 * * *"
+    - cron: "30 13 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -22,7 +22,7 @@ env:
 jobs:
   run-tests:
     if: |
-      github.event.schedule == '30 18 * * *' ||
+      github.event.schedule == '30 13 * * *' ||
       (github.event_name == 'workflow_dispatch' && (inputs.mode == 'tests-only' || inputs.mode == 'tests-and-report'))
     runs-on: ubuntu-latest
     timeout-minutes: 150
@@ -120,7 +120,7 @@ jobs:
 
   post-teams-after-scheduled-tests:
     needs: run-tests
-    if: always() && github.event.schedule == '30 18 * * *'
+    if: always() && github.event.schedule == '30 13 * * *'
     runs-on: ubuntu-latest
     permissions:
       actions: read
