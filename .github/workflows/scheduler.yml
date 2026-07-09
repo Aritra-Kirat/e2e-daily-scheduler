@@ -3,7 +3,6 @@ name: E2E Daily Scheduler
 on:
   schedule:
     - cron: "30 18 * * *"
-    - cron: "30 2 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -151,10 +150,8 @@ jobs:
           TEAMS_MENTION_EMAIL: ${{ secrets.TEAMS_MENTION_EMAIL }}
         run: node e2e/report/post-teams-summary.js
 
-  post-teams-morning:
-    if: |
-      github.event.schedule == '30 2 * * *' ||
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'report-only')
+  post-teams-report-only:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'report-only'
     runs-on: ubuntu-latest
     permissions:
       actions: read
