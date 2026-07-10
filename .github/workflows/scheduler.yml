@@ -1,198 +1,198 @@
-# name: E2E Daily Scheduler
+name: E2E Daily Scheduler
 
-# on:
-#   schedule:
-#     - cron: "0 19 * * *"
-#       timezone: "Asia/Kolkata"
-#   workflow_dispatch:
-#     inputs:
-#       mode:
-#         description: What to run
-#         required: true
-#         default: tests-and-report
-#         type: choice
-#         options:
-#           - tests-and-report
-#           - tests-only
-#           - report-only
+on:
+  schedule:
+    - cron: "0 19 * * *"
+      timezone: "Asia/Kolkata"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: What to run
+        required: true
+        default: tests-and-report
+        type: choice
+        options:
+          - tests-and-report
+          - tests-only
+          - report-only
 
-# concurrency:
-#   group: e2e-daily-scheduler
-#   cancel-in-progress: true
+concurrency:
+  group: e2e-daily-scheduler
+  cancel-in-progress: true
 
-# env:
-#   APP_REPO: kiratTechOffical/unifieddashboard_prod_fe
-#   APP_REF: feature/UI-Automation
+env:
+  APP_REPO: kiratTechOffical/unifieddashboard_prod_fe
+  APP_REF: feature/UI-Automation
 
-# jobs:
-#   run-tests:
-#     if: |
-#       github.event_name == 'schedule' ||
-#       (github.event_name == 'workflow_dispatch' && (inputs.mode == 'tests-only' || inputs.mode == 'tests-and-report'))
-#     runs-on: ubuntu-latest
-#     timeout-minutes: 150
-#     permissions:
-#       contents: read
-#     steps:
-#       - name: Checkout application repo
-#         uses: actions/checkout@v4
-#         with:
-#           repository: ${{ env.APP_REPO }}
-#           ref: ${{ env.APP_REF }}
-#           token: ${{ secrets.REPO_CHECKOUT_PAT }}
+jobs:
+  run-tests:
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'tests-only' || inputs.mode == 'tests-and-report'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout application repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.APP_REPO }}
+          ref: ${{ env.APP_REF }}
+          token: ${{ secrets.REPO_CHECKOUT_PAT }}
 
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: 20
-#           cache: npm
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-#       - name: Install dependencies
-#         run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-#       - name: Install Playwright browsers
-#         run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-#       - name: Preflight API check
-#         continue-on-error: true
-#         timeout-minutes: 3
-#         env:
-#           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
-#           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-#           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL != '' && secrets.NEXT_PUBLIC_API_BASE_URL || 'https://api.demounified.corpusinsight.com' }}
-#         run: |
-#           API_BASE="${NEXT_PUBLIC_API_BASE_URL%/}"
-#           for attempt in 1 2 3; do
-#             if curl -fsS -m 20 --connect-timeout 10 -X POST "${API_BASE}/users/login" \
-#               -H "Content-Type: application/json" \
-#               -d "{\"email\":\"${E2E_TEST_EMAIL}\",\"password\":\"${E2E_TEST_PASSWORD}\"}" \
-#               >/dev/null; then
-#               echo "API login ready on attempt ${attempt}"
-#               exit 0
-#             fi
-#             echo "API login not ready (attempt ${attempt}/3)"
-#             sleep 10
-#           done
-#           echo "API preflight did not succeed — continuing; tests will retry login on their own"
+      - name: Preflight API check
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL != '' && secrets.NEXT_PUBLIC_API_BASE_URL || 'https://api.demounified.corpusinsight.com' }}
+        run: |
+          API_BASE="${NEXT_PUBLIC_API_BASE_URL%/}"
+          for attempt in 1 2 3; do
+            if curl -fsS -m 20 --connect-timeout 10 -X POST "${API_BASE}/users/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"${E2E_TEST_EMAIL}\",\"password\":\"${E2E_TEST_PASSWORD}\"}" \
+              >/dev/null; then
+              echo "API login ready on attempt ${attempt}"
+              exit 0
+            fi
+            echo "API login not ready (attempt ${attempt}/3)"
+            sleep 10
+          done
+          echo "API preflight did not succeed — continuing; tests will retry login on their own"
 
-#       - name: Run E2E suites
-#         id: e2e
-#         env:
-#           CI: true
-#           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
-#           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-#           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL != '' && secrets.NEXT_PUBLIC_API_BASE_URL || 'https://api.demounified.corpusinsight.com' }}
-#           PLAYWRIGHT_BASE_URL: http://localhost:3100
-#         run: |
-#           set +e
-#           code=0
-#           for suite in login registration tool-connection calendar slides; do
-#             npm run test:e2e:$suite || code=1
-#           done
-#           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-#           exit 0
+      - name: Run E2E suites
+        id: e2e
+        env:
+          CI: true
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL != '' && secrets.NEXT_PUBLIC_API_BASE_URL || 'https://api.demounified.corpusinsight.com' }}
+          PLAYWRIGHT_BASE_URL: http://localhost:3100
+        run: |
+          set +e
+          code=0
+          for suite in login registration tool-connection calendar slides; do
+            npm run test:e2e:$suite || code=1
+          done
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
 
-#       - name: Build Teams summary
-#         if: always()
-#         env:
-#           GITHUB_SERVER_URL: ${{ github.server_url }}
-#           GITHUB_REPOSITORY: ${{ github.repository }}
-#           GITHUB_RUN_ID: ${{ github.run_id }}
-#           E2E_BRANCH: ${{ env.APP_REF }}
-#         run: node e2e/report/build-teams-summary.js
+      - name: Build Teams summary
+        if: always()
+        env:
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          E2E_BRANCH: ${{ env.APP_REF }}
+        run: node e2e/report/build-teams-summary.js
 
-#       - name: Upload Teams summary
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: e2e-teams-summary
-#           path: playwright-report/teams-summary.json
-#           retention-days: 7
-#           if-no-files-found: error
+      - name: Upload Teams summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-teams-summary
+          path: playwright-report/teams-summary.json
+          retention-days: 7
+          if-no-files-found: error
 
-#       - name: Upload HTML reports
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: playwright-report
-#           path: playwright-report/
-#           retention-days: 7
-#           if-no-files-found: warn
+      - name: Upload HTML reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: warn
 
-#       - name: Report test status
-#         if: always() && steps.e2e.outputs.exit_code != '0'
-#         run: echo "E2E tests reported failures. See Teams summary and HTML artifacts."
+      - name: Report test status
+        if: always() && steps.e2e.outputs.exit_code != '0'
+        run: echo "E2E tests reported failures. See Teams summary and HTML artifacts."
 
-#   post-teams:
-#     needs: run-tests
-#     if: |
-#       always() &&
-#       needs.run-tests.result != 'skipped' &&
-#       (github.event_name == 'schedule' ||
-#         (github.event_name == 'workflow_dispatch' && inputs.mode == 'tests-and-report'))
-#     runs-on: ubuntu-latest
-#     permissions:
-#       actions: read
-#       contents: read
-#     steps:
-#       - name: Checkout application repo
-#         uses: actions/checkout@v4
-#         with:
-#           repository: ${{ env.APP_REPO }}
-#           ref: ${{ env.APP_REF }}
-#           token: ${{ secrets.REPO_CHECKOUT_PAT }}
+  post-teams:
+    needs: run-tests
+    if: |
+      always() &&
+      needs.run-tests.result != 'skipped' &&
+      (github.event_name == 'schedule' ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'tests-and-report'))
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout application repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.APP_REPO }}
+          ref: ${{ env.APP_REF }}
+          token: ${{ secrets.REPO_CHECKOUT_PAT }}
 
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: 20
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-#       - name: Download Teams summary
-#         uses: actions/download-artifact@v4
-#         with:
-#           name: e2e-teams-summary
-#           path: playwright-report
+      - name: Download Teams summary
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-teams-summary
+          path: playwright-report
 
-#       - name: Post to Microsoft Teams
-#         env:
-#           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-#           TEAMS_SUMMARY_PATH: playwright-report/teams-summary.json
-#           TEAMS_MENTION_NAME: ${{ secrets.TEAMS_MENTION_NAME }}
-#           TEAMS_MENTION_EMAIL: ${{ secrets.TEAMS_MENTION_EMAIL }}
-#         run: node e2e/report/post-teams-summary.js
+      - name: Post to Microsoft Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          TEAMS_SUMMARY_PATH: playwright-report/teams-summary.json
+          TEAMS_MENTION_NAME: ${{ secrets.TEAMS_MENTION_NAME }}
+          TEAMS_MENTION_EMAIL: ${{ secrets.TEAMS_MENTION_EMAIL }}
+        run: node e2e/report/post-teams-summary.js
 
-#   post-teams-report-only:
-#     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'report-only'
-#     runs-on: ubuntu-latest
-#     permissions:
-#       actions: read
-#       contents: read
-#     steps:
-#       - name: Checkout application repo
-#         uses: actions/checkout@v4
-#         with:
-#           repository: ${{ env.APP_REPO }}
-#           ref: ${{ env.APP_REF }}
-#           token: ${{ secrets.REPO_CHECKOUT_PAT }}
+  post-teams-report-only:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'report-only'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout application repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.APP_REPO }}
+          ref: ${{ env.APP_REF }}
+          token: ${{ secrets.REPO_CHECKOUT_PAT }}
 
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: 20
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-#       - name: Download latest Teams summary
-#         uses: dawidd6/action-download-artifact@v6
-#         with:
-#           github_token: ${{ secrets.GITHUB_TOKEN }}
-#           workflow: scheduler.yml
-#           name: e2e-teams-summary
-#           branch: master
-#           path: playwright-report
+      - name: Download latest Teams summary
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: scheduler.yml
+          name: e2e-teams-summary
+          branch: master
+          path: playwright-report
 
-#       - name: Post to Microsoft Teams
-#         env:
-#           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-#           TEAMS_SUMMARY_PATH: playwright-report/teams-summary.json
-#           TEAMS_MENTION_NAME: ${{ secrets.TEAMS_MENTION_NAME }}
-#           TEAMS_MENTION_EMAIL: ${{ secrets.TEAMS_MENTION_EMAIL }}
-#         run: node e2e/report/post-teams-summary.js
+      - name: Post to Microsoft Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          TEAMS_SUMMARY_PATH: playwright-report/teams-summary.json
+          TEAMS_MENTION_NAME: ${{ secrets.TEAMS_MENTION_NAME }}
+          TEAMS_MENTION_EMAIL: ${{ secrets.TEAMS_MENTION_EMAIL }}
+        run: node e2e/report/post-teams-summary.js
