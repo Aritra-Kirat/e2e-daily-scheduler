@@ -30,7 +30,7 @@ jobs:
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && (inputs.mode == 'tests-only' || inputs.mode == 'tests-and-report'))
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 360
     permissions:
       contents: read
     steps:
@@ -73,7 +73,7 @@ jobs:
             echo "API login not ready (attempt ${attempt}/3)"
             sleep 10
           done
-          echo "API preflight did not succeed — continuing; tests will retry login on their own"
+          echo "API preflight did not succeed - continuing; tests will retry login on their own"
 
       - name: Run E2E suites
         id: e2e
@@ -86,7 +86,7 @@ jobs:
         run: |
           set +e
           code=0
-          for suite in login registration tool-connection calendar slides; do
+          for suite in registration tool-connection login reset-password calendar slides sheets trello slack; do
             npm run test:e2e:$suite || code=1
           done
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
@@ -94,6 +94,7 @@ jobs:
 
       - name: Build Teams summary
         if: always()
+        continue-on-error: true
         env:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -101,17 +102,29 @@ jobs:
           E2E_BRANCH: ${{ env.APP_REF }}
         run: node e2e/report/build-teams-summary.js
 
+      - name: Publish public HTML report link
+        if: always()
+        continue-on-error: true
+        run: |
+          if ! command -v zip >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+          node e2e/report/upload-public-report.js
+
       - name: Upload Teams summary
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: e2e-teams-summary
           path: playwright-report/teams-summary.json
           retention-days: 7
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload HTML reports
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -120,8 +133,18 @@ jobs:
           if-no-files-found: warn
 
       - name: Report test status
-        if: always() && steps.e2e.outputs.exit_code != '0'
-        run: echo "E2E tests reported failures. See Teams summary and HTML artifacts."
+        if: always()
+        run: |
+          code="${{ steps.e2e.outputs.exit_code }}"
+          if [ -z "$code" ]; then
+            echo "E2E step did not produce an exit code."
+            exit 1
+          fi
+          if [ "$code" != "0" ]; then
+            echo "E2E tests reported failures. See Teams summary and HTML artifacts."
+            exit 1
+          fi
+          echo "E2E suites completed successfully."
 
   post-teams:
     needs: run-tests
@@ -129,7 +152,7 @@ jobs:
       always() &&
       needs.run-tests.result != 'skipped' &&
       (github.event_name == 'schedule' ||
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'tests-and-report'))
+        (github.event_name == 'workflow_dispatch' && (inputs.mode == 'tests-and-report' || inputs.mode == 'tests-only')))
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -148,6 +171,7 @@ jobs:
           node-version: 20
 
       - name: Download Teams summary
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: e2e-teams-summary
