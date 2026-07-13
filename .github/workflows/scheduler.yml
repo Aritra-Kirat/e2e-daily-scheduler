@@ -84,7 +84,7 @@ jobs:
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL != '' && secrets.NEXT_PUBLIC_API_BASE_URL || 'https://api.demounified.corpusinsight.com' }}
-          PLAYWRIGHT_BASE_URL: http://localhost:3100
+          PLAYWRIGHT_BASE_URL: https://demounified.corpusinsight.com
         run: |
           set +e
           code=0
